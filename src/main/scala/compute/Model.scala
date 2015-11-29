@@ -5,33 +5,59 @@ object model {
   type Value = String
   type Template = String
   type ParameterCombination = Map[Parameter, Value]
-  case class Task(val step: Step, val index: Int, val inputValues: List[Value], val inputList: Iterable[ParameterCombination]) {
-    def id: String = step.name + '_' + index
-    override def toString = "Task[" + id + ", " + inputValues.toString + ", " + inputList.map(_.values.toList).toString + ']'
+
+  case class Task(stepName: String, template: Template, index: Int, inputValues: ParameterCombination,
+                  inputList: Map[Parameter, List[Value]]) {
+    def id: String = stepName + '_' + index
+
+    override def toString = "Task[" + id + ", " + inputValues + ", " + inputList + "]\n"
   }
-  case class Step(val name: String,
-                  val protocol: Template,
-                  val singleInputs: List[Parameter] = Nil,
-                  val listInputs: List[Parameter] = Nil,
-                  val outputs: List[Parameter] = Nil) {
-    def inputs = singleInputs ::: listInputs
-    def filterInputs(parameters: Iterable[ParameterCombination]) = parameters.map(pc => pc.filterKeys { inputs.contains(_) })
-    def filterListInputs(parameters: Iterable[ParameterCombination]) = parameters.map(pc => pc.filterKeys { listInputs.contains(_) })
-    def tasks(inputValues: Iterable[ParameterCombination]): Iterable[Task] = {
+
+  case class Protocol(template: Template,
+                      singleInputs: List[Parameter] = Nil,
+                      listInputs: List[Parameter] = Nil,
+                      outputs: List[Parameter] = Nil) {
+    def listOfTuplesToMap(list: List[(Parameter, Value)]): Map[Parameter, List[Value]] = {
+      Map(list.head._1 -> list.map(_._2))
+    }
+
+    def transposeInputValues(listInputValues: List[Map[Parameter, Value]]) = {
+      listInputValues
+        .map(_.filterKeys(listInputs.contains))
+        .transpose
+        .map(listOfTuplesToMap)
+        .foldLeft(Map[Parameter, List[Value]]())(_ ++ _)
+    }
+
+    def tasks(stepName: String, inputValues: List[ParameterCombination]): List[Task] = {
       inputValues
         .groupBy(combination => singleInputs.flatMap(combination.get))
         .zipWithIndex
-        .map({ case ((singleInputValues, pc), index) => Task(this, index, singleInputValues, filterListInputs(pc)) })
+        .map({ case ((singleInputValues, listInputValues), index) =>
+          Task(stepName, template, index, singleInputs.zip(singleInputValues).toMap, transposeInputValues(listInputValues))
+        }).toList
     }
   }
-  case class Workflow(val name: String, val steps: List[Step]) {
-    def filterInputsForStep(step: Step, parameters: List[ParameterCombination]): List[ParameterCombination] = {
-      parameters.map(pc => pc.filterKeys { step.inputs.contains(_) })
+
+  case class Step(name: String, protocol: Protocol, localToGlobal: Map[Parameter, Parameter]) {
+    def globalToLocal(parameters: List[ParameterCombination]): List[ParameterCombination] =
+      parameters.map(pc =>
+        localToGlobal
+          .filterKeys(localToGlobal.keySet.contains)
+          .mapValues(globalName => pc.get(globalName).get)
+      )
+
+    def tasks(global: List[ParameterCombination]): Iterable[Task] = {
+      protocol.tasks(name, globalToLocal(global))
     }
+  }
+
+  case class Workflow(name: String, steps: List[Step]) {
 
     def tasks(parameters: List[Map[Parameter, Value]]): Iterable[Task] = {
       val step = steps.head
-      step.tasks(filterInputsForStep(step, parameters))
+      step.tasks(parameters)
     }
   }
+
 }

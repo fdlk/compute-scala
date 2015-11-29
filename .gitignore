@@ -6,3 +6,4 @@
 .worksheet
 bin/
 target/
+compute-scala.iml
