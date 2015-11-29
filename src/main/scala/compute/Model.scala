@@ -20,13 +20,14 @@ object model {
                       singleInputs: List[Parameter] = Nil,
                       listInputs: List[Parameter] = Nil,
                       outputs: List[Parameter] = Nil) {
+    def filterListInputs(groupedInputValues:List[ParameterCombination]): List[ParameterCombination] =
+      groupedInputValues.map(_.filterKeys((PC_ID :: listInputs).contains))
     def tasks(stepName: String, inputValues: List[ParameterCombination]): List[Task] = {
       inputValues
         .groupBy(combination => singleInputs.flatMap(combination.get))
         .zipWithIndex
-        .map({ case ((singleInputValues, listInputValues), index) =>
-          Task(stepName, template, index, singleInputs.zip(singleInputValues).toMap,
-            listInputValues.map(liv => liv.filterKeys(k => (PC_ID :: listInputs).contains(k))))
+        .map({ case ((singleInputValues, groupedInputValues), index) =>
+          Task(stepName, template, index, singleInputs.zip(singleInputValues).toMap, filterListInputs(groupedInputValues))
         }).toList
     }
   }
@@ -40,7 +41,7 @@ object model {
     def globalToLocal(parameters: List[ParameterCombination]): List[ParameterCombination] =
       parameters.map(globalToLocal)
         .zipWithIndex
-        .map({ case (pc, i) => pc.updated(PC_ID, "" + i) })
+        .map({ case (pc, id) => pc.updated(PC_ID, id.toString) })
 
     def tasks(global: List[ParameterCombination]): Iterable[Task] = {
       protocol.tasks(name, globalToLocal(global))
@@ -50,9 +51,7 @@ object model {
   case class Workflow(name: String, steps: List[Step]) {
     def addTaskOutcomeToParameterCombinations(outputParameter: Parameter, tasks: List[Task], pcs: List[ParameterCombination]): List[ParameterCombination] = {
       val taskIds2 = tasks.flatMap(task => task.inputList.map(pc => (pc.get(PC_ID).get, task.id))).toMap
-      pcs.zipWithIndex.map({
-        case (pc, i) => pc.updated(outputParameter, taskIds2.get("" + i).get)
-      })
+      pcs.zipWithIndex.map({ case (pc, id) => pc.updated(outputParameter, taskIds2.get(id.toString).get) })
     }
 
     def reduce(state: (List[Task], List[ParameterCombination]), step: Step): (List[Task], List[ParameterCombination]) = state match {
