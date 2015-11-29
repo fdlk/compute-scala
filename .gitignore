@@ -2,7 +2,6 @@
 .classpath
 .project
 .settings
-.project
 .worksheet
 bin/
 target/
