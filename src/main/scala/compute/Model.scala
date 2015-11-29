@@ -5,9 +5,8 @@ object model {
   type Value = String
   type Template = String
   type ParameterCombination = Map[Parameter, Value]
-  val PC_ID: Parameter = "pcID"
-
   // extra parameter to introduce to keep track of the parameter combinations
+  val PC_ID: Parameter = "pcID"
 
   case class Task(stepName: String, template: Template, index: Int, inputValues: ParameterCombination,
                   inputList: List[ParameterCombination]) {
