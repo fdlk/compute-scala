@@ -12,6 +12,7 @@ object model {
   case class Task(stepName: String, template: Template, index: Int, inputValues: ParameterCombination,
                   inputList: List[ParameterCombination]) {
     def id: String = stepName + '_' + index
+
     override def toString = "Task[" + id + ", " + inputValues + ", " + inputList + "]\n"
   }
 
@@ -47,23 +48,21 @@ object model {
   }
 
   case class Workflow(name: String, steps: List[Step]) {
-    def tasks(parameters: List[ParameterCombination]) = {
-      //TODO: Make this a foldLeft on the steps or so
-      val step = steps.head
-      val tasks = step.tasks(parameters)
-      val taskIds = tasks.flatMap(task => task.inputList.map(pc => (pc.get(PC_ID).get, task.id))).toMap
-      val parameters2 = parameters.zipWithIndex.map({
-        case (pc, i) => pc.updated(step.name+".out", taskIds.get(""+i).get)
+    def addTaskOutcomeToParameterCombinations(outputParameter: Parameter, tasks: List[Task], pcs: List[ParameterCombination]): List[ParameterCombination] = {
+      val taskIds2 = tasks.flatMap(task => task.inputList.map(pc => (pc.get(PC_ID).get, task.id))).toMap
+      pcs.zipWithIndex.map({
+        case (pc, i) => pc.updated(outputParameter, taskIds2.get("" + i).get)
       })
-      val step2 = steps.tail.head
-      val tasks2 = step2.tasks(parameters2)
-      val taskIds2 = tasks2.flatMap(task => task.inputList.map(pc => (pc.get(PC_ID).get, task.id))).toMap
-      val parameters3 = parameters2.zipWithIndex.map({
-        case (pc, i) => pc.updated(step2.name+".out", taskIds2.get(""+i).get)
-      })
-      println(parameters3)
-      tasks ++ tasks2
     }
+
+    def reduce(state: (List[Task], List[ParameterCombination]), step: Step): (List[Task], List[ParameterCombination]) = state match {
+      case (tasks, parameters) => {
+        val stepTasks = step.tasks(parameters).toList
+        (tasks ++ stepTasks, addTaskOutcomeToParameterCombinations(step.name + ".out", stepTasks, parameters))
+      }
+    }
+
+    def tasks(parameters: List[ParameterCombination]): List[Task] = steps.foldLeft((Nil: List[Task], parameters))(reduce)._1
   }
 
 }
