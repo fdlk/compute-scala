@@ -20,8 +20,9 @@ object model {
                       singleInputs: List[Parameter] = Nil,
                       listInputs: List[Parameter] = Nil,
                       outputs: List[Parameter] = Nil) {
-    def filterListInputs(groupedInputValues:List[ParameterCombination]): List[ParameterCombination] =
+    def filterListInputs(groupedInputValues: List[ParameterCombination]): List[ParameterCombination] =
       groupedInputValues.map(_.filterKeys((PC_ID :: listInputs).contains))
+
     def tasks(stepName: String, inputValues: List[ParameterCombination]): List[Task] = {
       inputValues
         .groupBy(combination => singleInputs.flatMap(combination.get))
