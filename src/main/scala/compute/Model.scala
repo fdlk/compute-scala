@@ -32,10 +32,10 @@ object model {
   }
 
   case class Step(name: String, protocol: Protocol, localToGlobal: Map[Parameter, Parameter]) {
-    def globalToLocal(globalName: String) = localToGlobal.find(_._2 == globalName).map(_._1).getOrElse(globalName)
+    def globalToLocalMap = localToGlobal.map(_.swap)
 
     def globalToLocal(parameters: ParameterCombination): ParameterCombination =
-      parameters.map({ case (globalName, value) => (globalToLocal(globalName), value) })
+      parameters.map({ case (globalName, value) => (globalToLocalMap.get(globalName).getOrElse(globalName), value) })
 
     def globalToLocal(parameters: List[ParameterCombination]): List[ParameterCombination] =
       parameters.map(globalToLocal)
