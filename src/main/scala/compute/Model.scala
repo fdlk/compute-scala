@@ -7,7 +7,7 @@ object model {
   type ParameterCombination = Map[Parameter, Value]
   type TaskGeneratorState = (List[Task], List[ParameterCombination])
   // extra parameter to introduce to keep track of the parameter combinations
-  val PC_ID: Parameter = "pcID"
+  val PC_ID = "pcID"
 
   case class Task(stepName: String, template: Template, index: Int, inputValues: ParameterCombination,
                   inputList: List[ParameterCombination]) {
@@ -50,8 +50,8 @@ object model {
 
   case class Workflow(name: String, steps: List[Step]) {
     def addTaskOutcomeToParameterCombinations(outputParameter: Parameter, tasks: List[Task], pcs: List[ParameterCombination]): List[ParameterCombination] = {
-      val taskIds2 = tasks.flatMap(task => task.inputList.map(pc => (pc.get(PC_ID).get, task.id))).toMap
-      pcs.zipWithIndex.map({ case (pc, id) => pc.updated(outputParameter, taskIds2.get(id.toString).get) })
+      val taskIds = tasks.flatMap(task => task.inputList.map(pc => (pc.get(PC_ID).get, task.id))).toMap
+      pcs.zipWithIndex.map({ case (pc, id) => pc.updated(outputParameter, taskIds.get(id.toString).get) })
     }
 
     def reduce(state: TaskGeneratorState, step: Step): TaskGeneratorState = state match {
