@@ -5,6 +5,7 @@ object model {
   type Value = String
   type Template = String
   type ParameterCombination = Map[Parameter, Value]
+  type TaskGeneratorState = (List[Task], List[ParameterCombination])
   // extra parameter to introduce to keep track of the parameter combinations
   val PC_ID: Parameter = "pcID"
 
@@ -53,7 +54,7 @@ object model {
       pcs.zipWithIndex.map({ case (pc, id) => pc.updated(outputParameter, taskIds2.get(id.toString).get) })
     }
 
-    def reduce(state: (List[Task], List[ParameterCombination]), step: Step): (List[Task], List[ParameterCombination]) = state match {
+    def reduce(state: TaskGeneratorState, step: Step): TaskGeneratorState = state match {
       case (tasks, parameters) => {
         val stepTasks = step.tasks(parameters).toList
         (tasks ++ stepTasks, addTaskOutcomeToParameterCombinations(step.name + ".out", stepTasks, parameters))
