@@ -31,7 +31,7 @@ object model {
     }
   }
 
-  case class Step(name: String, protocol: Protocol, localToGlobal: Map[Parameter, Parameter]) {
+  case class Step(name: String, protocol: Protocol, localToGlobal: Map[Parameter, Parameter] = Map()) {
     def globalToLocalMap = localToGlobal.map(_.swap)
 
     def globalToLocal(parameters: ParameterCombination): ParameterCombination =
